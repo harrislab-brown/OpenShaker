@@ -1,6 +1,7 @@
 import serial
 import time
 import csv
+import datetime
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
@@ -21,13 +22,18 @@ TOLERANCE_PCT = 0.10
 STABILITY_WINDOW = 3.0   
 UPDATE_INTERVAL = 0.25    
 COLLECT_TIME_SEC = 3.0   
-CSV_FILENAME = "sweep_data_182.4g_4g_30_220.csv"
 WINDOW_SIZE = 100         
 ODR_SETTING = 1660        # Set to 1660Hz for higher sample rate
 
-# DISCOVERY FIX: Initialize 1, but plot/read 2
-INIT_CHANNELS = [0, 2, 4]   
-PLOT_CHANNELS = [0, 2, 4]   
+def build_csv_filename():
+    timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+    return f"{timestamp}_vibecheck_sweep_{SWEEP_START_FREQ}-{SWEEP_END_FREQ}Hz_{ODR_SETTING}Hz.csv"
+
+CSV_FILENAME = build_csv_filename()
+
+# Initialize physical sensor ports 0, 1, and 2 for accel commands
+INIT_CHANNELS = [0, 1, 2]
+PLOT_CHANNELS = [0, 2, 4]
 
 CHANNEL_LABELS = {
     0: "Bath 1 (Z-axis)",
@@ -51,6 +57,18 @@ def send_command_sync(cmd, timeout_sec=1.5):
 
 def send_command_async(cmd):
     device.write(f"{cmd}\n".encode('utf-8'))
+
+shutdown_initiated = False
+
+def stop_hardware():
+    global shutdown_initiated
+    if shutdown_initiated:
+        return
+    shutdown_initiated = True
+    print("--- FINAL HARDWARE SHUTDOWN ---")
+    send_command_async("wavegen stop")
+    for ch in INIT_CHANNELS:
+        send_command_async(f"sensor {ch} stop accel")
 
 def get_ac_rms(data_deque):
     """Calculates pure AC RMS. Using np.std inherently strips out static DC bias/gravity offset."""
@@ -201,6 +219,8 @@ def on_key_press(event):
 
 fig.canvas.mpl_connect('key_press_event', on_key_press)
 
+ani = None
+
 def update_data(frame):
     lines_processed = 0
     while device.in_waiting and lines_processed < 60:
@@ -242,7 +262,12 @@ def update_data(frame):
             
     controller.run_tick()
     if controller.state == "DONE":
-        plt.close('all')
+        if ani is not None and getattr(ani, 'event_source', None) is not None:
+            ani.event_source.stop()
+            ani._stop()
+        stop_hardware()
+        plt.close(fig)
+        return []
     up_lines = []
     
     for ch in PLOT_CHANNELS:
@@ -268,8 +293,8 @@ for ch in INIT_CHANNELS:
     start_time = time.time()
     while (time.time() - start_time) < 1.0:
         line = device.readline().decode('utf-8', errors='ignore').strip()
-        if line and line != "ack" and line.isdigit():
-            print(f"Channel {ch} accel ODR verified: {line} Hz")
+        if line:
+            print(f"Channel {ch} accel ODR response: {line}")
             break
     send_command_sync(f"sensor {ch} start accel")
 
@@ -277,11 +302,11 @@ print("\n--- STARTING WAVEGEN ---")
 send_command_sync("wavegen set waveform sine")
 send_command_sync("wavegen start")
 
-ani = FuncAnimation(fig, update_data, interval=30, blit=True)
+ani = FuncAnimation(fig, update_data, interval=30, blit=True, cache_frame_data=False)
 plt.show()
 
 # Cleanup
-device.write("wavegen stop\n".encode())
-for ch in INIT_CHANNELS: device.write(f"sensor {ch} stop accel\n".encode())
-device.close()
+stop_hardware()
+if device.is_open:
+    device.close()
 controller.csv_file.close()

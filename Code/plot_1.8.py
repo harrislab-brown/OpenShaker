@@ -1,10 +1,11 @@
+import glob
+import sys
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import os
 
 # --- CONFIGURATION ---
-CSV_FILENAME = "sweep_data_182.4g_1g_20_220.csv" 
 OUTPUT_DIR = "PID"
 
 def get_ac_rms(series):
@@ -200,11 +201,27 @@ def generate_plots(df, csv_filename):
     plt.savefig(output_image, dpi=300, bbox_inches='tight')
     plt.show()
 
+def find_latest_sweep_csv():
+    candidates = sorted(glob.glob("*_vibecheck_sweep_*Hz.csv"))
+    if not candidates:
+        return None
+    return candidates[-1]
+
 if __name__ == "__main__":
+    csv_filename = None
+    if len(sys.argv) > 1:
+        csv_filename = sys.argv[1]
+    else:
+        csv_filename = find_latest_sweep_csv()
+
+    if not csv_filename:
+        print("Error: No VibeCheck sweep CSV file found. Provide a filename as the first argument.")
+        sys.exit(1)
+
     try:
-        summary_df = process_sweep_data(CSV_FILENAME)
-        generate_plots(summary_df, CSV_FILENAME)
+        summary_df = process_sweep_data(csv_filename)
+        generate_plots(summary_df, csv_filename)
     except FileNotFoundError:
-        print(f"Error: Could not find {CSV_FILENAME}. Ensure the file exists in the same directory.")
+        print(f"Error: Could not find {csv_filename}. Ensure the file exists in the same directory.")
     except Exception as e:
         print(f"An error occurred: {e}")
