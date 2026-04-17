@@ -15,10 +15,10 @@ BAUD_RATE = 115200
 # --- SWEEP & CONTROL SETTINGS ---
 SWEEP_START_FREQ = 30   
 SWEEP_END_FREQ = 220     
-SWEEP_STEP_SIZE = 10     
+SWEEP_STEP_SIZE = 5
 TARGET_PEAK_G = 2.0       
 MAX_AMPLITUDE = 0.6      
-TOLERANCE_PCT = 0.10     
+TOLERANCE_PCT = 0.07
 STABILITY_WINDOW = 3.0   
 UPDATE_INTERVAL = 0.25    
 COLLECT_TIME_SEC = 3.0   
@@ -249,14 +249,15 @@ def update_data(frame):
                         sensor_data[ch]['z'].append(z)
                         sensor_data[ch]['t'].append(ts_sec)
                         
-                        # UPDATED: Log raw data continuously as it arrives
-                        controller.csv_writer.writerow([
-                            round(ts_sec, 6),      # Device timestamp in seconds with microsecond precision
-                            controller.current_freq, 
-                            round(controller.current_amp, 4), 
-                            ch, 
-                            round(x_raw, 4), round(y_raw, 4), round(z_raw, 4) # Raw sensor values without gravity offset
-                        ])
+                        # UPDATED: Log raw data only during successful capture period
+                        if controller.state == "COLLECTING":
+                            controller.csv_writer.writerow([
+                                round(ts_sec, 6),      # Device timestamp in seconds with microsecond precision
+                                controller.current_freq, 
+                                round(controller.current_amp, 4), 
+                                ch, 
+                                round(x_raw, 4), round(y_raw, 4), round(z_raw, 4) # Raw sensor values without gravity offset
+                            ])
             except Exception as e: 
                 continue
             

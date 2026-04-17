@@ -50,6 +50,11 @@ def process_sweep_data(filename):
         
         avg_bath_planar = (bath1_planar + bath2_planar) / 2.0
 
+        # Compare Bath sensors Z RMS to Shaker Y RMS
+        avg_rms_0 = rms_0_z
+        avg_rms_2 = rms_2_z
+        avg_rms_4 = rms_4_y
+
         # Prevent division by zero
         denom = max(rms_4_y, 0.001) 
         denom_planar = max(shaker_planar, 0.001)
@@ -72,6 +77,9 @@ def process_sweep_data(filename):
             'Bath1_Z': rms_0_z,
             'Bath2_Z': rms_2_z,
             'Shaker_Y': rms_4_y,
+            'Bath1_Avg_RMS': avg_rms_0,
+            'Bath2_Avg_RMS': avg_rms_2,
+            'Shaker_Avg_RMS': avg_rms_4,
             'Trans_1': trans_1,
             'Trans_2': trans_2,
             'Diff_1': diff_1,
@@ -200,6 +208,74 @@ def generate_plots(df, csv_filename):
     print(f"Saving high-resolution plot to {output_image}...")
     plt.savefig(output_image, dpi=300, bbox_inches='tight')
     plt.show()
+
+    # --- ADDITIONAL PLOT: Bath Z RMS vs Shaker Y RMS ---
+    fig2, ax2 = plt.subplots(figsize=(12, 7))
+    ax2.plot(freqs, df['Bath1_Avg_RMS'], marker='o', color='purple', label='Bath 1 Z RMS')
+    ax2.plot(freqs, df['Bath2_Avg_RMS'], marker='o', color='darkorange', label='Bath 2 Z RMS')
+    ax2.plot(freqs, df['Shaker_Avg_RMS'], marker='o', color='#34495e', label='Shaker Y RMS')
+    ax2.set_title('Bath Z RMS vs Shaker Y RMS by Frequency')
+    ax2.set_xlabel('Frequency (Hz)')
+    ax2.set_ylabel('RMS Acceleration (G)')
+    ax2.grid(True, linestyle='--', alpha=0.6)
+    ax2.legend()
+    
+    avg_output_image = os.path.join(OUTPUT_DIR, f"{os.path.splitext(base_name)[0]}_bath_z_vs_shaker_y.png")
+    print(f"Saving average RMS plot to {avg_output_image}...")
+    fig2.savefig(avg_output_image, dpi=300, bbox_inches='tight')
+    plt.show()
+
+    plot_time_traces(csv_filename)
+
+
+def plot_time_traces(csv_filename):
+    raw_df = pd.read_csv(csv_filename)
+    freqs = sorted(raw_df['Freq'].unique())
+    channels = [
+        (0, 'Bath 1'),
+        (2, 'Bath 2'),
+        (4, 'Shaker')
+    ]
+    n_cols = len(freqs)
+    n_rows = len(channels)
+    fig, axs = plt.subplots(n_rows, n_cols, figsize=(max(15, n_cols * 1.2), n_rows * 2), sharex='col', sharey='row')
+
+    for row, (ch, label) in enumerate(channels):
+        for col, freq in enumerate(freqs):
+            ax = axs[row][col] if n_rows > 1 else axs[col]
+            subset = raw_df[(raw_df['Freq'] == freq) & (raw_df['Channel'] == ch)]
+            if subset.empty:
+                ax.text(0.5, 0.5, 'No data', ha='center', va='center', color='gray')
+            else:
+                times = subset['Timestamp']
+                period = 1.0 / freq if freq > 0 else 0.0
+                window = 5.0 * period
+                t_end = times.iloc[-1]
+                t_start = max(times.iloc[0], t_end - window)
+                window_mask = times >= t_start
+                times_window = times[window_mask] - t_start
+                ax.plot(times_window, subset.loc[window_mask, 'X'], linewidth=1, label='X')
+                ax.plot(times_window, subset.loc[window_mask, 'Y'], linewidth=1, label='Y')
+                ax.plot(times_window, subset.loc[window_mask, 'Z'], linewidth=1, label='Z')
+                if row == 0 and col == n_cols - 1:
+                    ax.legend(loc='upper right', fontsize=6)
+            if row == 0:
+                ax.set_title(f'{freq} Hz', fontsize=9)
+            if col == 0:
+                ax.set_ylabel(label, fontsize=8)
+            if row == n_rows - 1:
+                ax.set_xlabel('Time (s)', fontsize=8)
+            ax.tick_params(labelsize=6)
+            ax.grid(True, linestyle=':', alpha=0.3)
+
+    base_name = os.path.basename(csv_filename)
+    fig.suptitle('Sample Time Traces (Last 5 Periods) by Frequency and Sensor', fontsize=16, fontweight='bold')
+    plt.tight_layout(rect=[0, 0, 1, 0.96])
+    output_image = os.path.join(OUTPUT_DIR, f"{os.path.splitext(base_name)[0]}_time_traces.png")
+    print(f"Saving time trace plot to {output_image}...")
+    fig.savefig(output_image, dpi=300, bbox_inches='tight')
+    plt.show()
+
 
 def find_latest_sweep_csv():
     candidates = sorted(glob.glob("*_vibecheck_sweep_*Hz.csv"))
