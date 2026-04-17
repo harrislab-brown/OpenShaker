@@ -8,7 +8,7 @@ from matplotlib.animation import FuncAnimation
 from collections import deque
 
 # --- CONFIGURATION ---
-PORT = 'SET TO SSERIAL PORT' 
+PORT = '/dev/tty.usbmodem3646396830331' 
 BAUD_RATE = 115200 
 
 # --- SWEEP & CONTROL SETTINGS ---
@@ -23,7 +23,7 @@ UPDATE_INTERVAL = 0.25
 COLLECT_TIME_SEC = 3.0   
 CSV_FILENAME = "sweep_data_182.4g_4g_30_220.csv"
 WINDOW_SIZE = 100         
-ODR_SETTING = 840        # UPDATED: Increased to 1660Hz
+ODR_SETTING = 1660        # Set to 1660Hz for higher sample rate
 
 # DISCOVERY FIX: Initialize 1, but plot/read 2
 INIT_CHANNELS = [0, 2, 4]   
@@ -217,7 +217,10 @@ def update_data(frame):
                     if ch in PLOT_CHANNELS:
                         x, y, z = float(parts[idx+2]), float(parts[idx+3]), float(parts[idx+4])
                         
-                        # Gravity offsets
+                        # Store raw values for CSV
+                        x_raw, y_raw, z_raw = x, y, z
+                        
+                        # Apply gravity offsets for visualization
                         if ch in [0, 2]: z -= 1.0
                         elif ch == 4: y -= 1.0
                         
@@ -232,12 +235,14 @@ def update_data(frame):
                             controller.current_freq, 
                             round(controller.current_amp, 4), 
                             ch, 
-                            round(x, 4), round(y, 4), round(z, 4) # Truncate sensor precision
+                            round(x_raw, 4), round(y_raw, 4), round(z_raw, 4) # Raw sensor values without gravity offset
                         ])
             except Exception as e: 
                 continue
             
     controller.run_tick()
+    if controller.state == "DONE":
+        plt.close('all')
     up_lines = []
     
     for ch in PLOT_CHANNELS:
@@ -258,6 +263,14 @@ for ch in INIT_CHANNELS:
     send_command_sync(f"sensor {ch} stop accel")
     send_command_sync(f"sensor {ch} set accel range 8")
     send_command_sync(f"sensor {ch} set accel odr {ODR_SETTING}")
+    # Verify ODR setting
+    device.write(f"sensor {ch} get accel odr\n".encode('utf-8'))
+    start_time = time.time()
+    while (time.time() - start_time) < 1.0:
+        line = device.readline().decode('utf-8', errors='ignore').strip()
+        if line and line != "ack" and line.isdigit():
+            print(f"Channel {ch} accel ODR verified: {line} Hz")
+            break
     send_command_sync(f"sensor {ch} start accel")
 
 print("\n--- STARTING WAVEGEN ---")
