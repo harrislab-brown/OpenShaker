@@ -8,7 +8,7 @@ from matplotlib.animation import FuncAnimation
 from collections import deque
 
 # --- CONFIGURATION ---
-PORT = '/dev/tty.usbmodem3646396830331' 
+PORT = 'SET TO SSERIAL PORT' 
 BAUD_RATE = 115200 
 
 # --- SWEEP & CONTROL SETTINGS ---
