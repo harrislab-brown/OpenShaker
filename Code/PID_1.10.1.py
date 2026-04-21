@@ -13,8 +13,8 @@ PORT = '/dev/tty.usbmodem3646396830331'
 BAUD_RATE = 115200 
 
 # --- SWEEP & CONTROL SETTINGS ---
-SWEEP_START_FREQ = 30   
-SWEEP_END_FREQ = 220     
+SWEEP_START_FREQ = 60   
+SWEEP_END_FREQ = 70     
 SWEEP_STEP_SIZE = 5
 TARGET_PEAK_G = 2.0       
 MAX_AMPLITUDE = 0.6      
@@ -23,7 +23,7 @@ STABILITY_WINDOW = 3.0
 UPDATE_INTERVAL = 0.25    
 COLLECT_TIME_SEC = 3.0   
 WINDOW_SIZE = 100         
-ODR_SETTING = 1660        # Set to 1660Hz for higher sample rate
+ODR_SETTING = 840        # Set to 840Hz for lower sample rate
 
 def build_csv_filename():
     timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
@@ -303,7 +303,7 @@ print("\n--- STARTING WAVEGEN ---")
 send_command_sync("wavegen set waveform sine")
 send_command_sync("wavegen start")
 
-ani = FuncAnimation(fig, update_data, interval=30, blit=True, cache_frame_data=False)
+ani = FuncAnimation(fig, update_data, interval=30, blit=False, cache_frame_data=False)
 plt.show()
 
 # Cleanup
