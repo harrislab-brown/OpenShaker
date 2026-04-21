@@ -303,7 +303,7 @@ print("\n--- STARTING WAVEGEN ---")
 send_command_sync("wavegen set waveform sine")
 send_command_sync("wavegen start")
 
-ani = FuncAnimation(fig, update_data, interval=30, blit=False, cache_frame_data=False)
+ani = FuncAnimation(fig, update_data, interval=30, blit=True, cache_frame_data=False)
 plt.show()
 
 # Cleanup
