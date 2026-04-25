@@ -22,10 +22,10 @@ def run(context):
         slotWidth = 0.015 * 2.54  # centimeters, width of the cutout between beams
         stockThickness = 0.01 * 2.54  # centimeters
 
-        outerRadius = 25/10  # centimeters, outer perimeter
-        innerRadius = 3.175/10  # centimeters, inner hole
-        outerRingWidth = 5/10  # centimeters
-        innerRingWidth = 5/10  # centimeters 
+        outerRadius = 30/10  # centimeters, outer perimeter (60mm is current OD, any necessary tollerance is in PLA Print)
+        innerRadius = 3.2/10  # centimeters, inner hole (1/4in is 6.35cm, 1/8in is 3.175cm)
+        outerRingWidth = 6/10  # centimeters (Claming PLA is 5mm thick)
+        innerRingWidth = 8/10  # centimeters (1/2in OD Spacer, 1/4in is 6.35mm)
 
         # create a sketch for the beams and for the end fillets
         sketches = rootComp.sketches
