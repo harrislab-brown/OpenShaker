@@ -19,8 +19,8 @@ TOLERANCE_PCT = 0.07
 STABILITY_WINDOW = 3.0   
 UPDATE_INTERVAL = 0.25    
 COLLECT_TIME_SEC = 3.0   
-ODR_SETTING = 840        # Set to 840Hz for lower sample rate
-BMASS = 0.425            # bath mass in kg
+ODR_SETTING = 1680       
+BMASS = 0.0622            # bath mass in kg
 DEGREE = 360             # Degree setting
 
 def build_csv_filename():

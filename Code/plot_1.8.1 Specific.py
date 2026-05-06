@@ -7,7 +7,7 @@ import os
 
 # --- CONFIGURATION ---
 OUTPUT_DIR = "PID"
-CSV_FILENAME = "2026-05-02_15-49-11_vibecheck_sweep_40-200Hz_840Hz_360F_0.425kg.csv"  # Set the specific CSV file to use here
+CSV_FILENAME = "2026-05-06_19-01-17_vibecheck_sweep_40-200Hz_840Hz_2.0G_360F_0.0622kg.csv"  # Set the specific CSV file to use here
 
 def get_ac_rms(series):
     """Calculates pure AC RMS by taking the standard deviation, stripping DC bias."""

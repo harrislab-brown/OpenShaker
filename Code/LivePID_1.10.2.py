@@ -16,7 +16,7 @@ BAUD_RATE = 115200
 SWEEP_START_FREQ = 40   
 SWEEP_END_FREQ = 200     
 SWEEP_STEP_SIZE = 10
-TARGET_PEAK_G = 1.0       
+TARGET_PEAK_G = 2.0       
 MAX_AMPLITUDE = 0.5      
 TOLERANCE_PCT = 0.07
 STABILITY_WINDOW = 3.0   
@@ -24,7 +24,7 @@ UPDATE_INTERVAL = 0.25
 COLLECT_TIME_SEC = 3.0   
 WINDOW_SIZE = 100         
 ODR_SETTING = 840        # Set to 840Hz for lower sample rate
-BMASS = 0.425            # bath mass in kg
+BMASS = 0.0622            # bath mass in kg
 DEGREE = 360             # Degree setting
 
 def build_csv_filename():
