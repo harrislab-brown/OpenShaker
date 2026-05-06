@@ -183,22 +183,12 @@ def generate_plots(df, csv_filename):
     max_t = max(t_data.max() * 1.1, 1.5) # Dynamic top limit
     axs[1, 2].axhspan(1.0, max_t, color='red', alpha=0.08, label='Amplification Zone (T > 1)')
     axs[1, 2].axhspan(0, 1.0, color='green', alpha=0.08, label='Isolation Zone (T < 1)')
-    
-    # Annotate the Maximum Peak (Worst Case Resonance)
-    max_idx = t_data.idxmax()
-    max_freq = df['Freq'].iloc[max_idx]
-    max_val = t_data.iloc[max_idx]
-    
-    axs[1, 2].annotate(f'Worst Case: {max_val:.2f}x at {max_freq}Hz', 
-                 xy=(max_freq, max_val), 
-                 xytext=(max_freq + 10, max_val),
-                 arrowprops=dict(facecolor='black', shrink=0.05, width=1.5, headwidth=6),
-                 fontsize=11, fontweight='bold', color='darkred')
 
     axs[1, 2].set_title("Planar Transmissibility Ratio (T)", fontsize=14, pad=10)
     axs[1, 2].set_xlabel("Frequency (Hz)", fontsize=12)
     axs[1, 2].set_ylabel("Transmissibility Ratio", fontsize=12)
-    axs[1, 2].set_ylim(0, max_t)
+    axs[1, 2].set_yscale('log')
+    axs[1, 2].set_ylim(0.01, 100)
     axs[1, 2].legend(loc='upper right', frameon=True, shadow=True)
     axs[1, 2].grid(True, linestyle='--', alpha=0.7)
 

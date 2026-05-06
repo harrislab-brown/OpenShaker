@@ -3,9 +3,6 @@ import time
 import csv
 import datetime
 import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib.gridspec as gridspec
-from matplotlib.animation import FuncAnimation
 from collections import deque
 
 # --- CONFIGURATION ---
@@ -22,24 +19,19 @@ TOLERANCE_PCT = 0.07
 STABILITY_WINDOW = 3.0   
 UPDATE_INTERVAL = 0.25    
 COLLECT_TIME_SEC = 3.0   
-WINDOW_SIZE = 100         
 ODR_SETTING = 840        # Set to 840Hz for lower sample rate
+BMASS = 0.425            # bath mass in kg
+DEGREE = 360             # Degree setting
 
 def build_csv_filename():
     timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-    return f"{timestamp}_vibecheck_sweep_{SWEEP_START_FREQ}-{SWEEP_END_FREQ}Hz_{ODR_SETTING}Hz.csv"
+    return f"{timestamp}_vibecheck_sweep_{SWEEP_START_FREQ}-{SWEEP_END_FREQ}Hz_{ODR_SETTING}Hz_{TARGET_PEAK_G}G_{DEGREE}F_{BMASS}kg.csv"
 
 CSV_FILENAME = build_csv_filename()
 
 # Initialize physical sensor ports 0, 1, and 2 for accel commands
 INIT_CHANNELS = [0, 1, 2]
-PLOT_CHANNELS = [0, 2, 4]
-
-CHANNEL_LABELS = {
-    0: "Bath 1 (Z-axis)",
-    2: "Bath 2 (Z-axis)",     
-    4: "Base Shaker (Y-axis)"
-}
+SENSOR_CHANNELS = [0, 2, 4]
 
 # --- SERIAL & UTILITY ---
 device = serial.Serial(PORT, BAUD_RATE, timeout=0.01)
@@ -81,8 +73,8 @@ def get_combined_rms(axis1, axis2):
 
 # --- DATA STORAGE ---
 sensor_data = {
-    chan: {ax: deque(maxlen=WINDOW_SIZE) for ax in ['x', 'y', 'z', 't']}
-    for chan in PLOT_CHANNELS
+    chan: {ax: deque() for ax in ['x', 'y', 'z', 't']}
+    for chan in SENSOR_CHANNELS
 }
 
 # --- CONTROLLER LOGIC ---
@@ -192,95 +184,51 @@ class SweepController:
 
 controller = SweepController()
 
-# --- PLOT SETUP ---
-fig = plt.figure(figsize=(16, 9))
-fig.suptitle(f"Automated Vibration Sweep | Target: {TARGET_PEAK_G} G Peak", fontsize=16, fontweight='bold')
+def process_serial_data():
+    while controller.state != "DONE":
+        lines_processed = 0
+        while device.in_waiting and lines_processed < 60:
+            line = device.readline().decode('utf-8', errors='ignore').strip()
+            lines_processed += 1
+            if not line.startswith("data"):
+                continue
 
-gs = gridspec.GridSpec(2, 3, figure=fig, hspace=0.4, top=0.90)
-axs = [fig.add_subplot(gs[0, i]) for i in range(3)]
-lines = {}
-for i, chan in enumerate(PLOT_CHANNELS):
-    ax = axs[i]
-    lines[chan] = {ax_n: ax.plot([], [], label=ax_n.upper())[0] for ax_n in ['x', 'y', 'z']}
-    ax.set_xlim(0, WINDOW_SIZE); ax.set_ylim(-4.0, 4) 
-    ax.set_title(f"Chan {chan}: {CHANNEL_LABELS[chan]}")
-    ax.legend(loc='upper right')
-
-ax_overlay = fig.add_subplot(gs[1, :])
-line_ov_0, = ax_overlay.plot([], [], label='Bath 1 Z', color='purple')
-line_ov_2, = ax_overlay.plot([], [], label='Bath 2 Z', color='darkorange')
-ax_overlay.set_xlim(0, WINDOW_SIZE); ax_overlay.set_ylim(-2, 2)
-ax_overlay.set_title("Overlay: Bath 1 vs Bath 2 (Z)")
-ax_overlay.legend()
-
-def on_key_press(event):
-    if event.key.lower() == 'p': controller.paused = not controller.paused
-    elif event.key.lower() == 's': controller.skip_req = True
-
-fig.canvas.mpl_connect('key_press_event', on_key_press)
-
-ani = None
-
-def update_data(frame):
-    lines_processed = 0
-    while device.in_waiting and lines_processed < 60:
-        line = device.readline().decode('utf-8', errors='ignore').strip()
-        lines_processed += 1
-        if line.startswith("data"):
             parts = line.split()
             try:
                 for i in range(int(parts[1])):
                     idx = 2 + (i * 5)
                     ch = int(parts[idx])
-                    timestamp = int(parts[idx+1])
+                    timestamp = int(parts[idx + 1])
                     ts_sec = timestamp / 1000000.0
-                    if ch in PLOT_CHANNELS:
-                        x, y, z = float(parts[idx+2]), float(parts[idx+3]), float(parts[idx+4])
-                        
-                        # Store raw values for CSV
-                        x_raw, y_raw, z_raw = x, y, z
-                        
-                        # Apply gravity offsets for visualization
-                        if ch in [0, 2]: z -= 1.0
-                        elif ch == 4: y -= 1.0
-                        
-                        sensor_data[ch]['x'].append(x)
-                        sensor_data[ch]['y'].append(y)
-                        sensor_data[ch]['z'].append(z)
-                        sensor_data[ch]['t'].append(ts_sec)
-                        
-                        # UPDATED: Log raw data only during successful capture period
-                        if controller.state == "COLLECTING":
-                            controller.csv_writer.writerow([
-                                round(ts_sec, 6),      # Device timestamp in seconds with microsecond precision
-                                controller.current_freq, 
-                                round(controller.current_amp, 4), 
-                                ch, 
-                                round(x_raw, 4), round(y_raw, 4), round(z_raw, 4) # Raw sensor values without gravity offset
-                            ])
-            except Exception as e: 
+                    if ch not in SENSOR_CHANNELS:
+                        continue
+
+                    x, y, z = float(parts[idx + 2]), float(parts[idx + 3]), float(parts[idx + 4])
+                    x_raw, y_raw, z_raw = x, y, z
+
+                    if ch in [0, 2]:
+                        z -= 1.0
+                    elif ch == 4:
+                        y -= 1.0
+
+                    sensor_data[ch]['x'].append(x)
+                    sensor_data[ch]['y'].append(y)
+                    sensor_data[ch]['z'].append(z)
+                    sensor_data[ch]['t'].append(ts_sec)
+
+                    if controller.state == "COLLECTING":
+                        controller.csv_writer.writerow([
+                            round(ts_sec, 6),
+                            controller.current_freq,
+                            round(controller.current_amp, 4),
+                            ch,
+                            round(x_raw, 4), round(y_raw, 4), round(z_raw, 4)
+                        ])
+            except Exception:
                 continue
-            
-    controller.run_tick()
-    if controller.state == "DONE":
-        if ani is not None and getattr(ani, 'event_source', None) is not None:
-            ani.event_source.stop()
-            ani._stop()
-        stop_hardware()
-        plt.close(fig)
-        return []
-    up_lines = []
-    
-    for ch in PLOT_CHANNELS:
-        for ax_n in ['x', 'y', 'z']:
-            lines[ch][ax_n].set_data(range(len(sensor_data[ch][ax_n])), sensor_data[ch][ax_n])
-            up_lines.append(lines[ch][ax_n])
-            
-    line_ov_0.set_data(range(len(sensor_data[0]['z'])), sensor_data[0]['z'])
-    line_ov_2.set_data(range(len(sensor_data[2]['z'])), sensor_data[2]['z'])
-    up_lines.extend([line_ov_0, line_ov_2])
-    
-    return up_lines
+
+        controller.run_tick()
+        time.sleep(0.01)
 
 # --- STARTUP ---
 print("--- PRE-FLIGHT (DISCOVERY MODE) ---")
@@ -303,8 +251,7 @@ print("\n--- STARTING WAVEGEN ---")
 send_command_sync("wavegen set waveform sine")
 send_command_sync("wavegen start")
 
-ani = FuncAnimation(fig, update_data, interval=30, blit=True, cache_frame_data=False)
-plt.show()
+process_serial_data()
 
 # Cleanup
 stop_hardware()
