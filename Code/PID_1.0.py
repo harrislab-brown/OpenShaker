@@ -24,8 +24,8 @@ UPDATE_INTERVAL = 0.25
 COLLECT_TIME_SEC = 3.0   
 WINDOW_SIZE = 100         
 ODR_SETTING = 840        # Set to 840Hz for lower sample rate
-BMASS = 0.427            # bath mass in kg
-DEGREE = 360             # Degree setting
+BMASS = 0.225            # bath mass in kg
+DEGREE = 270             # Degree setting
 APP_VERSION = '1.0'   # Application version included in file names
 PHYS_VERSION = '1.0'      # Physical system version suffix
 
