@@ -16,7 +16,7 @@ BAUD_RATE = 115200
 SWEEP_START_FREQ = 40   
 SWEEP_END_FREQ = 200     
 SWEEP_STEP_SIZE = 10
-TARGET_PEAK_G = 4.0       
+TARGET_PEAK_G = 1.0       
 MAX_AMPLITUDE = 0.8      
 TOLERANCE_PCT = 0.07
 STABILITY_WINDOW = 3.0   
@@ -25,7 +25,7 @@ COLLECT_TIME_SEC = 3.0
 WINDOW_SIZE = 100         
 ODR_SETTING = 840        # Set to 840Hz for lower sample rate
 BMASS = 0.225            # bath mass in kg
-DEGREE = 270             # Degree setting
+DEGREE = 540             # Degree setting
 APP_VERSION = '1.0'   # Application version included in file names
 PHYS_VERSION = '1.0'      # Physical system version suffix
 
