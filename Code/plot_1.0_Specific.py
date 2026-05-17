@@ -112,25 +112,25 @@ def generate_plots(df, csv_filename):
     
     freqs = df['Freq']
     
-    # --- PLOT 1: Drive Amplitude [TOP LEFT] ---
-    axs[0, 0].plot(freqs, df['Drive_Amp'], marker='o', color='black', linewidth=2, label='Drive Amplitude')
-    axs[0, 0].set_title("Controller Drive Amplitude")
-    axs[0, 0].set_xlabel("Frequency (Hz)")
-    axs[0, 0].set_ylabel("Amplitude (V)")
-    axs[0, 0].grid(True, linestyle='--', alpha=0.6)
-    axs[0, 0].legend()
+    # --- PLOT 1: Drive Amplitude [BOTTOM LEFT] ---
+    axs[1, 0].plot(freqs, df['Drive_Amp'], marker='o', color='black', linewidth=2, label='Drive Amplitude')
+    axs[1, 0].set_title("Controller Drive Amplitude")
+    axs[1, 0].set_xlabel("Frequency (Hz)")
+    axs[1, 0].set_ylabel("Amplitude (V)")
+    axs[1, 0].grid(True, linestyle='--', alpha=0.6)
+    axs[1, 0].legend()
     
-    # --- PLOT 2: Acceleration Output Difference [TOP MIDDLE] ---
-    axs[0, 1].plot(freqs, df['Diff_1'], marker='o', color='purple', label='Bath 1 Δ')
-    axs[0, 1].plot(freqs, df['Diff_2'], marker='o', color='darkorange', label='Bath 2 Δ')
-    axs[0, 1].axhline(0, color='black', linestyle='--', linewidth=1.5, label='Perfect Match (0 G)')
-    axs[0, 1].fill_between(freqs, 0, df['Diff_1'], where=(df['Diff_1'] > 0), color='green', alpha=0.1)
-    axs[0, 1].fill_between(freqs, 0, df['Diff_1'], where=(df['Diff_1'] < 0), color='red', alpha=0.1)
-    axs[0, 1].set_title("Acceleration Output Difference (Bath - Base Shaker)")
-    axs[0, 1].set_xlabel("Frequency (Hz)")
-    axs[0, 1].set_ylabel("Difference (G)")
-    axs[0, 1].grid(True, linestyle='--', alpha=0.6)
-    axs[0, 1].legend()
+    # --- PLOT 2: Acceleration Output Difference [BOTTOM MIDDLE] ---
+    axs[1, 1].plot(freqs, df['Diff_1'], marker='o', color='purple', label='Bath 1 Δ')
+    axs[1, 1].plot(freqs, df['Diff_2'], marker='o', color='darkorange', label='Bath 2 Δ')
+    axs[1, 1].axhline(0, color='black', linestyle='--', linewidth=1.5, label='Perfect Match (0 G)')
+    axs[1, 1].fill_between(freqs, 0, df['Diff_1'], where=(df['Diff_1'] > 0), color='green', alpha=0.1)
+    axs[1, 1].fill_between(freqs, 0, df['Diff_1'], where=(df['Diff_1'] < 0), color='red', alpha=0.1)
+    axs[1, 1].set_title("Acceleration Output Difference (Bath - Base Shaker)")
+    axs[1, 1].set_xlabel("Frequency (Hz)")
+    axs[1, 1].set_ylabel("Difference (G)")
+    axs[1, 1].grid(True, linestyle='--', alpha=0.6)
+    axs[1, 1].legend()
 
     # --- PLOT 3: Absolute Planar Acceleration [TOP RIGHT] ---
     axs[0, 2].plot(freqs, df['Shaker_Planar'], marker='s', color='#34495e', linewidth=2.5, label='Base Shaker Planar Wobble')
@@ -146,31 +146,31 @@ def generate_plots(df, csv_filename):
     axs[0, 2].legend(loc='upper left', frameon=True, shadow=True)
     axs[0, 2].grid(True, linestyle='--', alpha=0.7)
 
-    # --- PLOT 4: Sensor Uniformity [BOTTOM LEFT] ---
-    axs[1, 0].plot(freqs, df['Bath1_Z'], marker='o', color='purple', label='Bath 1 (Z)')
-    axs[1, 0].plot(freqs, df['Bath2_Z'], marker='o', color='darkorange', label='Bath 2 (Z)')
-    axs[1, 0].fill_between(freqs, df['Bath1_Z'], df['Bath2_Z'], color='red', alpha=0.15, label='Uniformity Gap')
-    axs[1, 0].set_title("Sensor Uniformity (Bath 1 vs Bath 2)")
-    axs[1, 0].set_xlabel("Frequency (Hz)")
-    axs[1, 0].set_ylabel("RMS Acceleration (G)")
-    axs[1, 0].grid(True, linestyle='--', alpha=0.6)
-    axs[1, 0].legend()
+    # --- PLOT 4: Sensor Uniformity [TOP LEFT] ---
+    axs[0, 0].plot(freqs, df['Bath1_Z'], marker='o', color='purple', label='Bath 1 (Z)')
+    axs[0, 0].plot(freqs, df['Bath2_Z'], marker='o', color='darkorange', label='Bath 2 (Z)')
+    axs[0, 0].fill_between(freqs, df['Bath1_Z'], df['Bath2_Z'], color='red', alpha=0.15, label='Uniformity Gap')
+    axs[0, 0].set_title("Sensor Uniformity (Bath 1 vs Bath 2)")
+    axs[0, 0].set_xlabel("Frequency (Hz)")
+    axs[0, 0].set_ylabel("RMS Acceleration (G)")
+    axs[0, 0].grid(True, linestyle='--', alpha=0.6)
+    axs[0, 0].legend()
 
-    # --- PLOT 5: Transmissibility Ratio (T) [BOTTOM MIDDLE] ---
-    axs[1, 1].plot(freqs, df['Trans_1'], marker='o', color='purple', label='Bath 1 (T)')
-    axs[1, 1].plot(freqs, df['Trans_2'], marker='o', color='darkorange', label='Bath 2 (T)')
-    axs[1, 1].axhline(1.0, color='red', linestyle='--', linewidth=1.5, label='T = 1.0 (1:1 Transfer)')
+    # --- PLOT 5: Transmissibility Ratio (T) [TOP MIDDLE] ---
+    axs[0, 1].plot(freqs, df['Trans_1'], marker='o', color='purple', label='Bath 1 (T)')
+    axs[0, 1].plot(freqs, df['Trans_2'], marker='o', color='darkorange', label='Bath 2 (T)')
+    axs[0, 1].axhline(1.0, color='red', linestyle='--', linewidth=1.5, label='T = 1.0 (1:1 Transfer)')
     
     # Highlight Amplification vs Isolation Zones
-    axs[1, 1].axhspan(1.0, max(df[['Trans_1', 'Trans_2']].max().max(), 1.5), color='red', alpha=0.05, label='Amplification Zone')
-    axs[1, 1].axhspan(0, 1.0, color='blue', alpha=0.05, label='Isolation Zone')
+    axs[0, 1].axhspan(1.0, max(df[['Trans_1', 'Trans_2']].max().max(), 1.5), color='red', alpha=0.05, label='Amplification Zone')
+    axs[0, 1].axhspan(0, 1.0, color='blue', alpha=0.05, label='Isolation Zone')
     
-    axs[1, 1].set_title("Transmissibility Ratio (Bath Z / Shaker Y)")
-    axs[1, 1].set_xlabel("Frequency (Hz)")
-    axs[1, 1].set_ylabel("Transmissibility (T)")
-    axs[1, 1].set_ylim(bottom=0) 
-    axs[1, 1].grid(True, linestyle='--', alpha=0.6)
-    axs[1, 1].legend()
+    axs[0, 1].set_title("Transmissibility Ratio (Bath Z / Shaker Y)")
+    axs[0, 1].set_xlabel("Frequency (Hz)")
+    axs[0, 1].set_ylabel("Transmissibility (T)")
+    axs[0, 1].set_ylim(bottom=0) 
+    axs[0, 1].grid(True, linestyle='--', alpha=0.6)
+    axs[0, 1].legend()
 
     # --- PLOT 6: Planar Transmissibility [BOTTOM RIGHT] ---
     t_data = df['Planar_Transmissibility']
