@@ -14,7 +14,7 @@ BAUD_RATE = 115200
 
 # --- SWEEP & CONTROL SETTINGS ---
 SWEEP_START_FREQ = 40   
-SWEEP_END_FREQ = 200     
+SWEEP_END_FREQ = 300     
 SWEEP_STEP_SIZE = 5
 TARGET_PEAK_G = 1.0       
 MAX_AMPLITUDE = 0.8      
@@ -24,10 +24,10 @@ UPDATE_INTERVAL = 0.25
 COLLECT_TIME_SEC = 3.0   
 WINDOW_SIZE = 100         
 ODR_SETTING = 840        # Set to 840Hz for lower sample rate
-BMASS = 0.065            # bath mass in kg
+BMASS = 0.135            # bath mass in kg
 DEGREE = 360             # Degree setting
 STINGER_GAP = 80          # Stinger gap in millimeters
-APP_VERSION = '1.2'   # Application version included in file names
+APP_VERSION = '1.1'   # Application version included in file names
 PHYS_VERSION = '1.1'      # Physical system version suffix
 
 def build_csv_filename():
