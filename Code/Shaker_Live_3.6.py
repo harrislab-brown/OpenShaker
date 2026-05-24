@@ -11,7 +11,7 @@ BAUD_RATE = 115200 # Kept at 115200 for high-speed streaming
 
 # Directly input your target frequency and amplitude here
 TARGET_FREQ = 100 
-DRIVE_AMP = 0.065        
+DRIVE_AMP = 0.01       
 
 INIT_CHANNELS = [0, 1, 4]   # Hardware IDs needed to turn them on
 PLOT_CHANNELS = [0, 2, 4]   # Software IDs outputted by the board

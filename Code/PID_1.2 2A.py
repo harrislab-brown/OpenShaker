@@ -13,8 +13,8 @@ PORT = '/dev/tty.usbmodem3646396830331'
 BAUD_RATE = 115200 
 
 # --- SWEEP & CONTROL SETTINGS ---
-SWEEP_START_FREQ = 40   
-SWEEP_END_FREQ = 300     
+SWEEP_START_FREQ = 20   
+SWEEP_END_FREQ = 50     
 SWEEP_STEP_SIZE = 5
 TARGET_PEAK_G = 1.0      
 MAX_AMPLITUDE = 0.8      
@@ -24,11 +24,11 @@ UPDATE_INTERVAL = 0.25
 COLLECT_TIME_SEC = 3.0   
 WINDOW_SIZE = 100         
 ODR_SETTING = 840        # Set to 840Hz for lower sample rate
-BMASS = 0.270            # bath mass in kg
+BMASS = 0.065            # bath mass in kg
 DEGREE = "270+360"             # Degree setting
 STINGER_GAP = 80          # Stinger gap in millimeters
-APP_VERSION = '1.1'   # Application version included in file names
-PHYS_VERSION = '1.1'      # Physical system version suffix
+APP_VERSION = '1.2'   # Application version included in file names
+PHYS_VERSION = '1.2'      # Physical system version suffix
 
 def build_csv_filename():
     timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
@@ -38,14 +38,13 @@ def build_csv_filename():
 
 CSV_FILENAME = build_csv_filename()
 
-# Initialize physical sensor ports 0, 1, and 2 for accel commands
-INIT_CHANNELS = [0, 1, 2]
-PLOT_CHANNELS = [0, 2, 4]
+# Initialize physical sensor ports used by this system
+INIT_CHANNELS = [0, 1]
+PLOT_CHANNELS = [0, 2]
 
 CHANNEL_LABELS = {
     0: "Bath 1 (Z-axis)",
-    2: "Bath 2 (Z-axis)",     
-    4: "Base Shaker (Y-axis)"
+    2: "Bath 2 (Z-axis)"
 }
 
 # --- SERIAL & UTILITY ---
@@ -149,13 +148,12 @@ class SweepController:
             return
 
         rms_0 = get_ac_rms(sensor_data[0]['z'])
-        rms_2 = get_ac_rms(sensor_data[2]['z'])
         
-        # Wait until the buffers actually have a little data before tuning
-        if rms_0 == 0.0 or rms_2 == 0.0:
+        # Wait until the buffer actually has a little data before tuning
+        if rms_0 == 0.0:
             return 
 
-        current_rms = (rms_0 + rms_2) / 2.0
+        current_rms = rms_0
         error = self.target_rms - current_rms
         in_bounds = abs(error) <= (self.target_rms * TOLERANCE_PCT)
 
@@ -203,8 +201,8 @@ controller = SweepController()
 fig = plt.figure(figsize=(16, 9))
 fig.suptitle(f"Automated Vibration Sweep | Target: {TARGET_PEAK_G} G Peak", fontsize=16, fontweight='bold')
 
-gs = gridspec.GridSpec(2, 3, figure=fig, hspace=0.4, top=0.90)
-axs = [fig.add_subplot(gs[0, i]) for i in range(3)]
+gs = gridspec.GridSpec(2, 2, figure=fig, hspace=0.4, top=0.90)
+axs = [fig.add_subplot(gs[0, i]) for i in range(2)]
 lines = {}
 for i, chan in enumerate(PLOT_CHANNELS):
     ax = axs[i]
@@ -249,7 +247,6 @@ def update_data(frame):
                         
                         # Apply gravity offsets for visualization
                         if ch in [0, 2]: z -= 1.0
-                        elif ch == 4: y -= 1.0
                         
                         sensor_data[ch]['x'].append(x)
                         sensor_data[ch]['y'].append(y)
