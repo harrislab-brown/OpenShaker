@@ -13,8 +13,8 @@ PORT = '/dev/tty.usbmodem3646396830331'
 BAUD_RATE = 115200 
 
 # --- SWEEP & CONTROL SETTINGS ---
-SWEEP_START_FREQ = 20   
-SWEEP_END_FREQ = 50     
+SWEEP_START_FREQ = 25   
+SWEEP_END_FREQ = 300     
 SWEEP_STEP_SIZE = 5
 TARGET_PEAK_G = 1.0      
 MAX_AMPLITUDE = 0.8      
@@ -246,7 +246,7 @@ def update_data(frame):
                         x_raw, y_raw, z_raw = x, y, z
                         
                         # Apply gravity offsets for visualization
-                        if ch in [0, 2]: z -= 1.0
+                        if ch in [0, 2]: z += 1.0
                         
                         sensor_data[ch]['x'].append(x)
                         sensor_data[ch]['y'].append(y)
