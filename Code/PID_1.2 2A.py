@@ -24,16 +24,17 @@ UPDATE_INTERVAL = 0.25
 COLLECT_TIME_SEC = 3.0   
 WINDOW_SIZE = 100         
 ODR_SETTING = 840        # Set to 840Hz for lower sample rate
-BMASS = 0.065            # bath mass in kg
-DEGREE = "270+360"             # Degree setting
-STINGER_GAP = 80          # Stinger gap in millimeters
+BMASS = 0.130            # bath mass in kg
+DEGREE = "Conc60"             # Degree setting
+STINGER_LENGTH = 100         # Stinger gap in millimeters
+SPACER = 10               # Spacer thickness in millimeters
 APP_VERSION = '1.2'   # Application version included in file names
-PHYS_VERSION = '1.2'      # Physical system version suffix
+PHYS_VERSION = '1.3'      # Physical system version suffix
 
 def build_csv_filename():
     timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
     version_tag = f"{APP_VERSION}-{PHYS_VERSION}"
-    stinger_label = f"Stinger_{STINGER_GAP}mm"
+    stinger_label = f"Total_Stinger_{STINGER_LENGTH}mm_Spacer_{SPACER}mm"
     return f"{timestamp}_v{version_tag}_vibecheck_sweep_{SWEEP_START_FREQ}-{SWEEP_END_FREQ}Hz_{ODR_SETTING}Hz_{TARGET_PEAK_G}G_{DEGREE}F_{BMASS}kg_{stinger_label}.csv"
 
 CSV_FILENAME = build_csv_filename()
@@ -102,7 +103,7 @@ class SweepController:
         self.current_freq = self.freqs[self.idx]
         self.current_amp = 0.0  # Initialized here to ensure it exists for early raw logging
         
-        self.Kp, self.Ki, self.Kd = 0.01, 0.002, 0.001
+        self.Kp, self.Ki, self.Kd = 0.02, 0.004, 0.002
         self.error_sum = 0
         self.last_error = 0
         self.last_tune_time = 0
