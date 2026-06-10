@@ -24,12 +24,12 @@ UPDATE_INTERVAL = 0.25
 COLLECT_TIME_SEC = 3.0   
 WINDOW_SIZE = 100         
 ODR_SETTING = 840        # Set to 840Hz for lower sample rate
-BMASS = 0.130            # bath mass in kg
-DEGREE = "Conc60"             # Degree setting
+BMASS = 0.070            # bath mass in kg
+DEGREE = "270"             # Degree setting
 STINGER_LENGTH = 100         # Stinger gap in millimeters
 SPACER = 10               # Spacer thickness in millimeters
 APP_VERSION = '1.2'   # Application version included in file names
-PHYS_VERSION = '1.3'      # Physical system version suffix
+PHYS_VERSION = '1.4_3Washers'      # Physical system version suffix
 
 def build_csv_filename():
     timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
