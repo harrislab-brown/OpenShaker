@@ -15,7 +15,7 @@ def run(context):
 
         # curve parameters
         splinePoints = 100  # discretize the curve with this many points, accuracy vs performance tradeoff
-        turnAngle = 360 * math.pi / 180.0  # radians, what angle does the beam turn through between inner and outer radius
+        turnAngle = 120 * math.pi / 180.0  # radians, what angle does the beam turn through between inner and outer radius
         numBeams = 3
         shapeFactor = 0.00  # how much to thin the beams in the middle
 
