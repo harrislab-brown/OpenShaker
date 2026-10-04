@@ -50,86 +50,7 @@ The [OpenShaker wiki](https://github.com/harrislab-brown/OpenShaker/wiki) contai
 
 ## Software quick start
 
-The current workflow uses **Python 3.13** and three files in the [`Code`](https://github.com/harrislab-brown/OpenShaker/tree/main/Code) folder:
-
-| File | Purpose |
-| --- | --- |
-| `PID_1.2 2AWin.py` | Controls the VibeCheck, runs a frequency sweep, regulates Bath 1 Z-axis acceleration with PID control, and records both bath sensors to CSV |
-| `plot_1.2_A2Win.py` | Reads a sweep CSV and creates RMS, planar-response, drive-amplitude, planar-to-Z, and time-trace plots |
-| `install_packages.py` | Installs and checks NumPy, pandas, Matplotlib, and pyserial |
-
-`Shaker_Live_3.6.py` and files in `Code/Old` are archived and are not part of the current workflow.
-
-### 1. Download the repository
-
-Use **Code > Download ZIP** on GitHub, or clone the repository:
-
-```bash
-git clone https://github.com/harrislab-brown/OpenShaker.git
-cd OpenShaker/Code
-```
-
-### 2. Create the Python environment
-
-On macOS:
-
-```bash
-python3.13 -m venv .venv
-source .venv/bin/activate
-python -m pip install --upgrade pip
-python install_packages.py
-```
-
-On Windows PowerShell:
-
-```powershell
-py -3.13 -m venv .venv
-.\.venv\Scripts\python.exe -m pip install --upgrade pip
-.\.venv\Scripts\python.exe install_packages.py
-```
-
-### 3. Select and test the serial connection
-
-Connect the VibeCheck with a USB data cable, list the available ports, and copy the correct device name into the `PORT` setting near the beginning of the PID script.
-
-macOS:
-
-```bash
-python -m serial.tools.list_ports -v
-```
-
-Windows PowerShell:
-
-```powershell
-.\.venv\Scripts\python.exe -m serial.tools.list_ports -v
-```
-
-Only one program can use the VibeCheck serial port at a time. Close serial monitors and other programs connected to the device before running a sweep.
-
-### 4. Review the test settings, then run
-
-Before each test, check the frequency range, target acceleration, drive limit, sensor rate, bath-mass label, flexure orientation, stinger length, and spacer label near the beginning of the PID script.
-
-macOS, with the environment activated:
-
-```bash
-python "PID_1.2 2AWin.py"
-python "plot_1.2_A2Win.py"
-```
-
-Windows PowerShell:
-
-```powershell
-.\.venv\Scripts\python.exe "PID_1.2 2AWin.py"
-.\.venv\Scripts\python.exe "plot_1.2_A2Win.py"
-```
-
-Run one command at a time. The plotting script can be used without the hardware connected. During a sweep, press `P` in the active plot window to pause or resume, press `S` to skip the current frequency, or close the plot window to stop and run the cleanup routine.
-
-> [!NOTE]
-> Some earlier downloads use the filename `PID_1.2 2A.py`. Use the exact filename present in your `Code` folder and keep filenames containing spaces inside quotation marks.
-
-For the full Visual Studio Code setup, macOS and Windows instructions, output-file descriptions, and troubleshooting steps, see [Python, PID, and Plotting Overview](https://github.com/harrislab-brown/OpenShaker/wiki/8.-Python,-PID,-and-Plotting-Overview).
+Go to 8. [Python, PID, and Plotting Overview](https://github.com/harrislab-brown/OpenShaker/wiki/8.-Python,-PID,-and-Plotting-Overview)
 
 ## Documented performance configuration
 
@@ -143,11 +64,8 @@ The comparison sweeps currently published in the wiki use the following configur
 | Threaded support rod | 110 mm long, 1/4 in diameter |
 | Standard bath | 100 mm, approximately 0.070 kg total moving bath mass |
 | Sensors | Two LSM6DS3 accelerometers on the bath assembly |
-| Example sweep | 25–300 Hz in 5 Hz increments, 840 Hz sensor rate, 1.0 G peak target |
+| Example sweep | 25–300 Hz in 5 Hz increments, 5000 Hz sensor rate, 1.0 G peak target |
 
-Initial comparisons also tested a larger 190 mm, approximately 0.130 kg bath and added base-shaker mass. Of the four documented sweeps, the standard 0.070 kg bath without added washers provided the best overall suppression of planar motion. A strong rocking mode was observed near 195 Hz with the larger bath. These results are preliminary closed-loop comparisons rather than complete transfer-function measurements; see [Shaker Performance](https://github.com/harrislab-brown/OpenShaker/wiki/9.-Shaker-Performance) for the figures, limitations, and interpretation.
-
-The current Python guide shows `DEGREE = 270` as the default filename label, while the published comparison sweeps used 180° flexures. Update this and the other physical labels in the script so every output filename describes the assembly that was actually tested.
 
 ## Fabrication notes
 
