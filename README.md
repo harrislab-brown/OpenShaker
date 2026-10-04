@@ -45,7 +45,7 @@ The [OpenShaker wiki](https://github.com/harrislab-brown/OpenShaker/wiki) contai
 | [`Code`](https://github.com/harrislab-brown/OpenShaker/tree/main/Code) | Current sweep-control, data-collection, setup, and plotting scripts |
 | [`Flexure Files`](https://github.com/harrislab-brown/OpenShaker/tree/main/Flexure%20Files) | Disk-flexure geometry for fabrication |
 | [`Fusion Files`](https://github.com/harrislab-brown/OpenShaker/tree/main/Fusion%20Files) | Editable mechanical design files |
-| [`THIRD SENSOR (Data Collection)`](https://github.com/harrislab-brown/OpenShaker/tree/main/THIRD%20SENSOR%20%28Data%20Collection%29) | Experimental three-sensor data-collection work |
+| [`accelerometer_3_files)`](https://github.com/harrislab-brown/OpenShaker/tree/main/accelerometer_3_files%20(Data%20Collection)) | Experimental three-sensor data-collection work |
 | [Wiki](https://github.com/harrislab-brown/OpenShaker/wiki) | Parts, fabrication, assembly, software, safety, and performance documentation |
 
 ## Software quick start
