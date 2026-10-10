@@ -4,7 +4,7 @@ Each frequency: tune mean bath Z AC RMS -> BATH_PAIR (channels 0/2)
 -> stop Bath 2 -> start shaker -> SHAKER_PAIR (channels 0/4).
 Frequency and commanded amplitude are frozen across both capture blocks and
 switching. Bath 1 remains streaming. Stop/start are firmware commands, not
-Python-side filtering; their effect on sensor power depends on firmware.
+Python-side filtering. The supplied firmware powers down the inactive accel.
 
 CSV starts with the original seven columns. Step, Phase, Timestamp_us,
 Window_Start_us and Window_End_us identify paired measurement blocks.
@@ -15,6 +15,11 @@ provide hardware sample synchronization. Sequential blocks are not simultaneous.
 
 Shaker vertical is provisionally Y; its planar axes are X/Z. Bath vertical
 is Z and planar axes are X/Y. Verify mounting before interpreting results.
+Rate-check revision: reads the configured ODR back, sizes RMS windows using it,
+uses a 5 ms acquisition timer and 10 Hz plotting, stops unused gyro/fake streams,
+and saves detailed diagnostics on failure. It does NOT reorder/drop samples or
+rewrite timestamps. This may help host-side backlog, not repair firmware data.
+CSV rates are configured nominal rates, not measured achieved sample rates.
 Dependencies: pip install pyserial numpy matplotlib
 P: pause progression AFTER both blocks (drive continues); P again resumes.
 S: skip during tuning only; Q or close window: stop everything.
@@ -29,7 +34,6 @@ from collections import deque
 import serial
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.animation import FuncAnimation
 
 # --- EXISTING EXPERIMENT SETTINGS ---
 PORT = 'COM5'
@@ -45,12 +49,15 @@ UPDATE_INTERVAL = 0.25
 COLLECT_TIME_SEC = 3.0       # Per pair: 3 seconds + 3 seconds at each frequency.
 WINDOW_SIZE = 100
 CONTROL_WINDOW_SEC = 0.25  # Keep the RMS estimate long enough as ODR increases.
-ODR_SETTING = 2400
+ODR_SETTING = 3330  # Up to 4995Hz the PID will run, but it will record at 3330Hz.
+READ_INTERVAL_MS = 5
+PLOT_INTERVAL_SEC = 0.10  # Plot less often than serial polling.
+SHOW_LIVE_PLOT = True    # False keeps status/controls but avoids waveform rendering.
 BMASS = 0.070
 DEGREE = '180'
 STINGER_LENGTH = 100
 SPACER = 10
-APP_VERSION = '1.6_PairedSensors'
+APP_VERSION = '1.5_3Accel_Paired_RateCheck'
 PHYS_VERSION = '1.5'
 
 # Command port and streamed channel ID are different identifiers.
@@ -77,7 +84,7 @@ MAX_PAIR_CLOCK_SKEW_SEC = 0.1
 def build_csv_filename():
     timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
     return (f'{timestamp}_v{APP_VERSION}-{PHYS_VERSION}_vibecheck_sweep_'
-            f'{SWEEP_START_FREQ}-{SWEEP_END_FREQ}Hz_{ODR_SETTING}Hz_'
+            f'{SWEEP_START_FREQ}-{SWEEP_END_FREQ}Hz_req{ODR_SETTING}Hz_'
             f'{TARGET_PEAK_G}G_{DEGREE}F_{BMASS}kg_'
             f'Total_Stinger_{STINGER_LENGTH}mm_Spacer_{SPACER}mm.csv')
 
@@ -101,6 +108,12 @@ class Acquisition:
         self.on_sample = None
         self.allowed_channels = set(CHANNEL_LABELS)  # Startup stop/drain only.
         self.shut_down = False
+        self.initializing = True
+        self.configured_odr = {}
+        self.recent_records = deque(maxlen=16)
+        self.max_backlog_bytes = 0
+        self.last_wire_time = self.clock()
+        self.diagnostic_path = None
 
     def send(self, command):
         self.device.write((command + '\n').encode('utf-8'))
@@ -119,7 +132,7 @@ class Acquisition:
                     raise RuntimeError(f'{command}: {reply}')
                 if re.search(r'\b(ack|ok)\b', reply, re.I):
                     print(f'   -> Board: {reply}')
-                    return
+                    return reply
             time.sleep(0.005)
         raise RuntimeError(f'No ACK/OK for command: {command}')
 
@@ -129,7 +142,9 @@ class Acquisition:
                 values.clear()
 
     def poll(self):
-        self.buffer.extend(self.device.read(min(self.device.in_waiting, 65536)))
+        waiting = self.device.in_waiting
+        self.max_backlog_bytes = max(self.max_backlog_bytes, waiting)
+        self.buffer.extend(self.device.read(min(waiting, 262144)))
         if len(self.buffer) > 1048576:
             raise RuntimeError('Serial input has no valid line endings.')
         lines = self.buffer.split(b'\n')
@@ -143,6 +158,12 @@ class Acquisition:
                 self.replies.append(line)
                 if re.search(r'\b(error|failed|invalid)\b', line, re.I):
                     raise RuntimeError(f'Board reported: {line}')
+                continue
+            self.last_wire_time = self.clock()
+            # Discard residual packets ONLY while startup stops/drains all streams.
+            # Updating last_wire_time above still requires a quiet drain period.
+            # Normal packet/timestamp validation resumes before sensors are started.
+            if self.initializing:
                 continue
             try:
                 count = int(parts[1])
@@ -160,14 +181,23 @@ class Acquisition:
                 raise RuntimeError(f'Malformed data packet: {error}') from error
             for ch, timestamp, xyz in records:
                 if ch not in self.data:
+                    if not self.initializing:
+                        raise RuntimeError(f'Unexpected data channel {ch}; unused streams should be stopped')
                     continue
                 if ch not in self.allowed_channels:
                     raise RuntimeError(f'Inactive channel {ch} is still transmitting; '
                                        'cannot maintain two-stream acquisition.')
                 old = self.last_timestamp[ch]
                 if old is not None and timestamp <= old:
-                    raise RuntimeError(f'Channel {ch} timestamp repeated or reset. '
-                                       'Paired windows require monotonic device timestamps.')
+                    context = list(self.recent_records) + [(ch, timestamp, xyz)]
+                    raise RuntimeError(
+                        f'Channel {ch}: previous={old} us, new={timestamp} us, '
+                        f'change={timestamp - old} us; requested ODR={ODR_SETTING}, '
+                        f'configured ODR={self.configured_odr.get(ch, "unknown")}; '
+                        f'current backlog={self.device.in_waiting} bytes, '
+                        f'max observed backlog={self.max_backlog_bytes} bytes; '
+                        f'recent raw records (channel, timestamp_us, XYZ)={context}')
+                self.recent_records.append((ch, timestamp, xyz))
                 self.last_timestamp[ch] = timestamp
                 self.last_received[ch] = self.clock()
                 self.samples[ch] += 1
@@ -180,13 +210,15 @@ class Acquisition:
     def initialize(self):
         # Stop ALL streams first; never start all three for discovery.
         self.send('wavegen stop')
+        self.send('sensor fakedata stop')
         for port in SENSOR_PORT_TO_CHANNEL:
             self.send(f'sensor {port} stop accel')
+            self.send(f'sensor {port} stop gyro')
         started = self.clock()
         deadline = started + STREAM_START_TIMEOUT_SEC
         while True:
             self.poll()
-            latest = max([started] + [v for v in self.last_received.values()
+            latest = max([started, self.last_wire_time] + [v for v in self.last_received.values()
                                       if v is not None])
             if self.clock() - latest >= SWITCH_QUIET_SEC and not self.device.in_waiting:
                 break
@@ -194,9 +226,22 @@ class Acquisition:
                 raise RuntimeError('Sensors did not stop during initialization.')
             time.sleep(0.005)
         self.allowed_channels.clear()
+        self.initializing = False
         for port in SENSOR_PORT_TO_CHANNEL:
             self.command(f'sensor {port} set accel range 8')
             self.command(f'sensor {port} set accel odr {ODR_SETTING}')
+            reply = self.command(f'sensor {port} get accel odr')
+            match = re.fullmatch(r'(?:ack|ok)\s+(\d+)', reply.strip(), re.I)
+            if not match or int(match.group(1)) <= 0:
+                raise RuntimeError(f'Cannot verify configured ODR for sensor port {port}: {reply}')
+            rate = int(match.group(1))
+            ch = SENSOR_PORT_TO_CHANNEL[port]
+            self.configured_odr[ch] = rate
+            size = max(WINDOW_SIZE, math.ceil(rate * CONTROL_WINDOW_SEC))
+            self.data[ch] = {axis: deque(maxlen=size) for axis in 'xyzt'}
+            print(f'CHANNEL {ch}: requested {ODR_SETTING} Hz; board configured {rate} Hz')
+        if len(set(self.configured_odr.values())) != 1:
+            raise RuntimeError(f'Sensors report different ODRs: {self.configured_odr}')
         self.command('wavegen set waveform sine')
         self.clear_traces(CHANNEL_LABELS)
         # Configure does not prove the requested ODR is the actual hardware rate.
@@ -206,8 +251,8 @@ class Acquisition:
             return
         self.shut_down = True
         errors = []
-        for command in ['wavegen stop'] + [f'sensor {p} stop accel'
-                                          for p in SENSOR_PORT_TO_CHANNEL]:
+        for command in ['wavegen stop', 'sensor fakedata stop'] + [f'sensor {p} stop {kind}'
+                                          for p in SENSOR_PORT_TO_CHANNEL for kind in ('accel', 'gyro')]:
             try:
                 self.send(command)
             except Exception as error:
@@ -272,7 +317,9 @@ class PairSwitcher:
             if ready:
                 stamps = [self.a.last_timestamp[ch] for ch in self.target]
                 ready = max(stamps) - min(stamps) <= MAX_PAIR_CLOCK_SKEW_SEC * 1e6
-            if not ready or self.a.device.in_waiting:
+            # Incoming bytes are normal during streaming; they must not reset
+            # the settle timer. STOPPING retains its separate drain check.
+            if not ready:
                 self.ready_since = None
                 return
             if self.ready_since is None:
@@ -297,10 +344,12 @@ class SweepController:
         self.pause_requested = False
         self.wave_running = False
         self.failure = None
+        self.a.diagnostic_path = str(filename) + '.diagnostics.txt'
         self.csv_file = open(filename, 'w', newline='')
         self.csv_writer = csv.writer(self.csv_file)
         self.csv_writer.writerow(['Timestamp', 'Freq', 'Drive_Amp', 'Channel', 'X', 'Y', 'Z',
-                                  'Step', 'Phase', 'Timestamp_us', 'Window_Start_us', 'Window_End_us'])
+                                  'Step', 'Phase', 'Timestamp_us', 'Window_Start_us', 'Window_End_us',
+                                  'Requested_ODR_Hz', 'Configured_ODR_Hz'])
         self.csv_file.flush()
         self.a.on_sample = self.record_sample
 
@@ -314,7 +363,8 @@ class SweepController:
         if self.window_start <= timestamp < self.window_end:
             self.csv_writer.writerow([timestamp / 1e6, self.current_freq, self.current_amp,
                                       ch, *xyz, self.idx + 1, self.phase, timestamp,
-                                      self.window_start, self.window_end])
+                                      self.window_start, self.window_end, ODR_SETTING,
+                                      self.a.configured_odr.get(ch, "")])
             self.capture_counts[ch] += 1
 
     def begin_frequency(self):
@@ -441,7 +491,20 @@ class SweepController:
     def abort(self, error):
         self.failure = str(error)
         self.state = 'ERROR'
+        self.a.shutdown()
         print(f'ACQUISITION STOPPED: {error}')
+        if self.a.diagnostic_path:
+            try:
+                with open(self.a.diagnostic_path, 'w') as report:
+                    report.write(f'Requested ODR: {ODR_SETTING} Hz\n'
+                                 f'Configured ODR by channel: {self.a.configured_odr}\n'
+                                 f'Frequency: {self.current_freq} Hz\n'
+                                 f'Phase: {self.phase}\n'
+                                 f'Max observed serial backlog: {self.a.max_backlog_bytes} bytes\n'
+                                 f'Error: {error}\n')
+                print(f'Diagnostic saved: {self.a.diagnostic_path}')
+            except OSError as save_error:
+                print(f'Could not save diagnostic: {save_error}')
         self.a.shutdown()
         self.csv_file.flush()
         print('Last frequency may be incomplete; use Phase and window columns to check it.')
@@ -461,9 +524,15 @@ class LiveView:
         self.status = self.fig.text(0.02, 0.02, '')
         self.fig.subplots_adjust(bottom=0.18)
         self.fig.canvas.mpl_connect('key_press_event', controller.on_key)
-        self.fig.canvas.mpl_connect('close_event', lambda event: self.a.shutdown())
+        self.fig.canvas.mpl_connect('close_event', self.on_close)
         self.last_pair = None
-        self.animation = None
+        self.timer = None
+        self.last_draw = float("-inf")
+
+    def on_close(self, event):
+        if self.timer is not None:
+            self.timer.stop()
+        self.a.shutdown()
 
     def draw(self):
         pair = tuple(sorted(self.c.pairs.active))
@@ -494,7 +563,7 @@ class LiveView:
                 y = y - full_y.mean()  # Longer DC estimate; CSV remains raw.
                 peak = max(peak, float(np.max(np.abs(y))))
             line.set_data(t, y)
-        self.ax.set_xlim(min(oldest, -WINDOW_SIZE / ODR_SETTING), 0.0)
+        self.ax.set_xlim(min(oldest, -WINDOW_SIZE / max(self.a.configured_odr.values(), default=ODR_SETTING)), 0.0)
         limit = max(2.0, peak * 1.1)
         self.ax.set_ylim(-limit, limit)
         self.ax.set_title(f'{self.c.current_freq} Hz | Drive {self.c.current_amp:.4f} | {self.c.state}')
@@ -508,17 +577,28 @@ class LiveView:
             self.a.poll()
             self.c.tick()
             if self.c.state in ('DONE', 'ERROR'):
-                if self.animation is not None:
-                    self.animation.event_source.stop()
+                if self.timer is not None:
+                    self.timer.stop()
                 plt.close(self.fig)
                 return []
-            return self.draw()
+            if self.a.clock() - self.last_draw >= PLOT_INTERVAL_SEC:
+                if SHOW_LIVE_PLOT:
+                    self.draw()
+                else:
+                    self.ax.set_title(f'{self.c.current_freq} Hz | {self.c.state} | live traces disabled')
+                self.fig.canvas.draw_idle()
+                self.last_draw = self.a.clock()
+            return []
         except Exception as error:
             self.c.abort(error)
-            if self.animation is not None:
-                self.animation.event_source.stop()
+            if self.timer is not None:
+                self.timer.stop()
             plt.close(self.fig)
             return []
+
+    def on_timer(self):
+        self.update(0)
+        return self.c.state not in ('DONE', 'ERROR')
 
 
 def main():
@@ -536,8 +616,9 @@ def main():
         acquisition.initialize()
         controller.start()
         view = LiveView(controller)
-        view.animation = FuncAnimation(view.fig, view.update, interval=30,
-                                       blit=False, cache_frame_data=False)
+        view.timer = view.fig.canvas.new_timer(interval=READ_INTERVAL_MS)
+        view.timer.add_callback(view.on_timer)
+        view.timer.start()
         plt.show()
         if controller.failure:
             raise RuntimeError(controller.failure)
