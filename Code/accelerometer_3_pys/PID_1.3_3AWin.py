@@ -18,7 +18,7 @@ from matplotlib.animation import FuncAnimation
 from collections import deque
 
 # --- CONFIGURATION ---
-PORT = '/dev/tty.usbmodem3646396830331' 
+PORT = 'COM5' 
 BAUD_RATE = 115200 
 
 # --- SWEEP & CONTROL SETTINGS ---
@@ -32,13 +32,13 @@ STABILITY_WINDOW = 3.0
 UPDATE_INTERVAL = 0.25    
 COLLECT_TIME_SEC = 3.0   
 WINDOW_SIZE = 100         
-ODR_SETTING = 840        # Set to 840Hz for lower sample rate
+ODR_SETTING = 2400        # sample rate
 BMASS = 0.070            # bath mass in kg
-DEGREE = "270"             # Degree setting
+DEGREE = "180"             # Degree setting
 STINGER_LENGTH = 100         # Stinger gap in millimeters
 SPACER = 10               # Spacer thickness in millimeters
-APP_VERSION = '1.3_3Accel'   # Application version included in file names
-PHYS_VERSION = '1.4_3Washers'      # Physical system version suffix
+APP_VERSION = '1.5_3Accel'   # Application version included in file names
+PHYS_VERSION = '1.5'      # Physical system version suffix
 
 def build_csv_filename():
     timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
